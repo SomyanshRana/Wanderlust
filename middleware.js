@@ -5,10 +5,17 @@ const ExpressError = require("./utils/ExpressError.js");
 
 module.exports.isLoggedIn = (req, res, next) => {
   if (!req.isAuthenticated()) {
-    req.session.redirectUrl = req.originalUrl;
-    req.flash("error", "you must be logged in to create listing!");
+    if (req.method === "GET") {
+      req.session.redirectUrl = req.originalUrl;
+    } else {
+      req.session.redirectUrl =
+        req.get("Referrer") || `/listings/${req.params.id}`;
+    }
+
+    req.flash("error", "You must be logged in!");
     return res.redirect("/login");
   }
+
   next();
 };
 
@@ -22,7 +29,7 @@ module.exports.saveRedirectUrl = (req, res, next) => {
 module.exports.isOwner = async (req, res, next) => {
   let { id } = req.params;
   let listing = await Listing.findById(id);
-  if (!currUser && listing.owner._id.equals(res.locals.currUser._id)) {
+  if (!listing.owner._id.equals(res.locals.currUser._id)) {
     req.flash("error", "You don't have permission");
     return res.redirect(`/listings/${id}`);
   }
